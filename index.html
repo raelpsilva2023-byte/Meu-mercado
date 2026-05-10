@@ -4,149 +4,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Market AI Pro - Lista de Compras</title>
-    <!-- Tailwind CSS para estilização rápida -->
+    <title>Market AI - Direto ao Ponto</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons para ícones modernos -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
         
-        /* Garantir que o conteúdo está visível imediatamente */
+        /* FORÇAR VISIBILIDADE IMEDIATA */
         html, body {
             opacity: 1 !important;
             visibility: visible !important;
             display: block !important;
-        }
-
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #F8FAFC; 
-            -webkit-tap-highlight-color: transparent; 
-            margin: 0; 
-        }
-
-        .item-card { animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
+            background-color: #F8FAFC;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            padding: 0;
         }
 
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        input:focus { ring: 0; outline: none; }
     </style>
 </head>
-<body class="opacity-100">
+<body class="bg-slate-50">
 
-    <div class="min-h-screen pb-24">
-        <!-- Cabeçalho -->
-        <header class="bg-white border-b sticky top-0 z-40 px-6 pt-6 pb-4 shadow-sm">
-            <div class="flex justify-between items-center mb-4">
+    <div class="min-h-screen flex flex-col">
+        <!-- Cabeçalho Fixo -->
+        <header class="bg-white border-b sticky top-0 z-50 px-6 py-4 shadow-sm">
+            <div class="flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <div class="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-100">
-                        <i data-lucide="sparkles" class="text-white w-5 h-5"></i>
+                    <div class="bg-indigo-600 p-2 rounded-lg">
+                        <i data-lucide="shopping-cart" class="text-white w-5 h-5"></i>
                     </div>
-                    <h1 id="header-title" class="text-xl font-black italic uppercase text-slate-900">Geral</h1>
+                    <h1 id="header-title" class="text-lg font-extrabold uppercase tracking-tighter text-slate-900">Lista de Compras</h1>
                 </div>
-                <button onclick="clearChecked()" class="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                    <i data-lucide="trash-2" class="w-6 h-6"></i>
+                <button onclick="clearChecked()" class="text-slate-400 hover:text-red-500 p-2">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
                 </button>
             </div>
             <!-- Barra de Progresso -->
-            <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div id="progress-bar" class="h-full bg-indigo-600 transition-all duration-500" style="width: 0%"></div>
+            <div class="mt-4 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full bg-indigo-600 transition-all duration-300" style="width: 0%"></div>
             </div>
         </header>
 
-        <!-- Filtros de Categoria -->
-        <div class="bg-white border-b sticky top-[105px] z-30 py-4 overflow-x-auto scrollbar-hide px-6">
-            <div id="category-filters" class="flex gap-2"></div>
+        <!-- Filtros Rápidos -->
+        <div class="bg-white border-b sticky top-[73px] z-40 py-3 overflow-x-auto scrollbar-hide px-6 flex gap-2">
+            <div id="category-filters" class="flex gap-2">
+                <!-- Filtros injetados via JS -->
+            </div>
         </div>
 
-        <!-- Campo de Introdução -->
+        <!-- Input Principal -->
         <div class="p-6">
             <div class="relative group">
-                <input id="item-input" type="text" class="w-full pl-6 pr-16 py-5 rounded-3xl border-2 border-slate-100 focus:border-indigo-600 outline-none text-lg font-semibold bg-white transition-all shadow-sm" placeholder="O que comprar?">
-                <button id="add-btn" onclick="addItem()" class="absolute right-2 top-2 bottom-2 px-5 bg-indigo-600 text-white rounded-2xl active:scale-95 transition-all flex items-center justify-center">
-                    <i data-lucide="plus" id="btn-icon" class="w-6 h-6"></i>
+                <input id="item-input" type="text" 
+                    class="w-full pl-5 pr-14 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-600 bg-white text-base font-semibold shadow-sm" 
+                    placeholder="Adicionar item...">
+                <button onclick="addItem()" class="absolute right-2 top-2 bottom-2 px-4 bg-indigo-600 text-white rounded-xl active:scale-90 transition-transform">
+                    <i data-lucide="plus" id="btn-icon"></i>
                     <div id="btn-loader" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 </button>
             </div>
-            <p id="ia-status" class="text-[10px] text-slate-400 mt-2 px-2 font-bold uppercase tracking-widest hidden">IA a Classificar...</p>
+            <p id="ia-status" class="text-[9px] text-indigo-500 mt-2 font-bold uppercase tracking-widest hidden italic">IA categorizando...</p>
         </div>
 
-        <!-- Lista de Itens -->
-        <div id="items-container" class="px-6 space-y-3 pb-10"></div>
+        <!-- Listagem de Itens -->
+        <div id="items-container" class="px-6 space-y-3 pb-24">
+            <!-- Itens aparecem aqui instantaneamente -->
+        </div>
     </div>
 
     <script>
-        // Configurações e Estado
         const apiKey = ""; 
-        let items = JSON.parse(localStorage.getItem('market_ai_v2')) || [];
-        let categories = ["Geral", "Hortifruti", "Açougue", "Padaria", "Limpeza", "Bebidas", "Laticínios", "Grãos e Farinhas", "Mercearia"];
+        let items = JSON.parse(localStorage.getItem('market_ai_v3')) || [];
+        let categories = ["Geral", "Hortifruti", "Açougue", "Padaria", "Limpeza", "Bebidas", "Laticínios", "Mercearia"];
         let currentFilter = "Geral";
 
-        // Inicialização imediata assim que o DOM estiver pronto
-        document.addEventListener('DOMContentLoaded', () => {
-            initApp();
-        });
-
-        function initApp() {
-            refreshCategories();
+        // Execução Imediata
+        function boot() {
             renderFilters();
             render();
-            // Inicializar ícones do Lucide
-            if (window.lucide) {
-                lucide.createIcons();
-            }
+            if (window.lucide) lucide.createIcons();
         }
 
-        // Lógica da IA para Categorização
-        async function getAICategory(itemName) {
-            const systemPrompt = `És um classificador de supermercado.
-            REGRAS:
-            1. Se o item for Farinha, Arroz, Feijão, Grãos ou Massas secas, usa "Grãos e Farinhas".
-            2. NUNCA coloques farinha em "Mercearia".
-            3. Responde apenas o nome da categoria.
-            Categorias: Hortifruti, Açougue, Padaria, Limpeza, Bebidas, Laticínios, Grãos e Farinhas, Mercearia.`;
+        // Chamar imediatamente sem esperar onload total se possível
+        boot();
 
+        async function getAICategory(itemName) {
+            const prompt = `Classifica em uma palavra: ${itemName}. Categorias: Hortifruti, Açougue, Padaria, Limpeza, Bebidas, Laticínios, Grãos, Mercearia.`;
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
-            for (let i = 0; i < 5; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: `Classifica este item: ${itemName}` }] }],
-                            systemInstruction: { parts: [{ text: systemPrompt }] }
-                        })
-                    });
-                    const data = await response.json();
-                    let category = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Geral";
-                    return category.replace(/[.]/g, ''); 
-                } catch (e) {
-                    const delay = Math.pow(2, i) * 1000;
-                    await new Promise(r => setTimeout(r, delay));
-                }
-            }
-            return "Geral";
-        }
-
-        function refreshCategories() {
-            const itemCats = [...new Set(items.map(i => i.category))];
-            itemCats.forEach(cat => {
-                if (!categories.includes(cat)) categories.push(cat);
-            });
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Geral";
+            } catch (e) { return "Geral"; }
         }
 
         function renderFilters() {
-            const filterContainer = document.getElementById('category-filters');
-            if (!filterContainer) return;
-            
-            filterContainer.innerHTML = categories.map(cat => `
-                <button onclick="filterBy('${cat}')" class="filter-btn px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all whitespace-nowrap 
-                ${currentFilter === cat ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-400'}">
+            const container = document.getElementById('category-filters');
+            if (!container) return;
+            container.innerHTML = categories.map(cat => `
+                <button onclick="filterBy('${cat}')" class="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase border-2 transition-all whitespace-nowrap 
+                ${currentFilter === cat ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-100 text-slate-400'}">
                     ${cat}
                 </button>
             `).join('');
@@ -154,45 +118,28 @@
 
         function filterBy(cat) {
             currentFilter = cat;
-            const titleEl = document.getElementById('header-title');
-            if (titleEl) titleEl.innerText = cat;
             renderFilters();
             render();
         }
 
         async function addItem() {
             const input = document.getElementById('item-input');
-            const btnIcon = document.getElementById('btn-icon');
-            const btnLoader = document.getElementById('btn-loader');
-            const iaStatus = document.getElementById('ia-status');
-            const text = input.value.trim();
+            const val = input.value.trim();
+            if (!val) return;
+
+            document.getElementById('btn-icon').classList.add('hidden');
+            document.getElementById('btn-loader').classList.remove('hidden');
+            document.getElementById('ia-status').classList.remove('hidden');
+
+            const cat = await getAICategory(val);
             
-            if (!text) return;
-
-            btnIcon.classList.add('hidden');
-            btnLoader.classList.remove('hidden');
-            iaStatus.classList.remove('hidden');
-            input.disabled = true;
-
-            const detectedCategory = await getAICategory(text);
-
-            const newItem = {
-                id: Date.now(),
-                name: text,
-                checked: false,
-                category: detectedCategory
-            };
-
-            items.unshift(newItem);
-            
-            input.disabled = false;
+            items.unshift({ id: Date.now(), name: val, checked: false, category: cat });
             input.value = '';
-            btnIcon.classList.remove('hidden');
-            btnLoader.classList.add('hidden');
-            iaStatus.classList.add('hidden');
-
-            refreshCategories();
-            renderFilters();
+            
+            document.getElementById('btn-icon').classList.remove('hidden');
+            document.getElementById('btn-loader').classList.add('hidden');
+            document.getElementById('ia-status').classList.add('hidden');
+            
             save();
         }
 
@@ -212,59 +159,36 @@
         }
 
         function save() {
-            localStorage.setItem('market_ai_v2', JSON.stringify(items));
+            localStorage.setItem('market_ai_v3', JSON.stringify(items));
             render();
         }
 
         function render() {
             const container = document.getElementById('items-container');
-            const bar = document.getElementById('progress-bar');
-            if (!container) return;
+            const filtered = items.filter(i => currentFilter === "Geral" || i.category.toLowerCase().includes(currentFilter.toLowerCase()));
 
-            const filtered = items.filter(i => currentFilter === "Geral" || i.category === currentFilter);
-
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-20 opacity-20">
-                        <i data-lucide="shopping-cart" class="w-16 h-16 mx-auto mb-4"></i>
-                        <p class="font-black uppercase tracking-widest text-xs text-slate-900">Lista Vazia</p>
+            container.innerHTML = filtered.length ? filtered.map(item => `
+                <div class="flex items-center gap-3 p-4 bg-white rounded-2xl shadow-sm border border-slate-100 transition-all ${item.checked ? 'opacity-50' : ''}">
+                    <button onclick="toggleItem(${item.id})" class="text-indigo-600">
+                        <i data-lucide="${item.checked ? 'check-square' : 'square'}" class="w-6 h-6"></i>
+                    </button>
+                    <div class="flex-1 min-w-0" onclick="toggleItem(${item.id})">
+                        <p class="font-bold text-slate-800 truncate ${item.checked ? 'line-through' : ''}">${item.name}</p>
+                        <span class="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">${item.category}</span>
                     </div>
-                `;
-            } else {
-                container.innerHTML = filtered.map(item => `
-                    <div class="item-card flex items-center gap-4 p-5 rounded-3xl border-2 transition-all ${item.checked ? 'bg-slate-50 border-transparent opacity-60' : 'bg-white border-white shadow-md'}">
-                        <button onclick="toggleItem(${item.id})" class="${item.checked ? 'text-green-500' : 'text-slate-200'}">
-                            <i data-lucide="${item.checked ? 'check-circle-2' : 'circle'}" class="w-8 h-8"></i>
-                        </button>
-                        <div class="flex-1 min-w-0" onclick="toggleItem(${item.id})">
-                            <h3 class="font-bold text-lg truncate ${item.checked ? 'line-through text-slate-400' : 'text-slate-700'}">${item.name}</h3>
-                            <div class="flex items-center gap-1.5 mt-0.5">
-                                <span class="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded tracking-widest italic flex items-center gap-1">
-                                    <i data-lucide="tag" class="w-2 h-2"></i> ${item.category}
-                                </span>
-                            </div>
-                        </div>
-                        <button onclick="deleteItem(${item.id})" class="p-2 text-slate-200 hover:text-red-400 transition-colors">
-                            <i data-lucide="x" class="w-5 h-5"></i>
-                        </button>
-                    </div>
-                `).join('');
-            }
+                    <button onclick="deleteItem(${item.id})" class="text-slate-300 hover:text-red-500">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `).join('') : `<p class="text-center text-slate-400 py-10 text-xs font-bold uppercase tracking-widest">Nenhum item aqui</p>`;
 
-            if (bar) {
-                const checkedCount = items.filter(i => i.checked).length;
-                bar.style.width = (items.length ? (checkedCount / items.length) * 100 : 0) + '%';
-            }
+            const progress = items.length ? (items.filter(i => i.checked).length / items.length) * 100 : 0;
+            document.getElementById('progress-bar').style.width = progress + '%';
             
-            if (window.lucide) {
-                lucide.createIcons();
-            }
+            if (window.lucide) lucide.createIcons();
         }
 
-        // Listener para a tecla Enter
-        document.getElementById('item-input').addEventListener('keypress', (e) => { 
-            if (e.key === 'Enter') addItem(); 
-        });
+        document.getElementById('item-input').onkeypress = (e) => e.key === 'Enter' && addItem();
     </script>
 </body>
 </html>
