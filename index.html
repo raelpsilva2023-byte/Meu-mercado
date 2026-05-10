@@ -1,257 +1,266 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Meu Mercado</title>
-    <!-- Bibliotecas Essenciais -->
+    <title>Market AI Pro - Lista de Compras</title>
+    <!-- Tailwind CSS para estilização rápida -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons para ícones modernos -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #F8FAFC; 
+            -webkit-tap-highlight-color: transparent; 
             margin: 0; 
-            background-color: #F8FAFC;
-            user-select: none;
-            overflow-x: hidden;
+        }
+        .item-card { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .loader-screen { 
+            position: fixed; 
+            inset: 0; 
+            background: white; 
+            z-index: 100; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            transition: opacity 0.5s; 
         }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        .animate-loading-bar { animation: loadingBar 5s linear forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes loadingBar { from { width: 0%; } to { width: 100%; } }
-        
-        /* Previne que a tela fique branca enquanto o React carrega */
-        #root:empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background: white;
-        }
+        /* Suporte para entalhes de celular (Safe Area) */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body>
-    <div id="root">
-        <!-- Loader estático para evitar tela branca inicial -->
-        <div style="text-align: center; font-family: sans-serif; color: #cbd5e1;">
-            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-            <p style="font-size: 10px; font-weight: bold; letter-spacing: 2px;">INICIALIZANDO...</p>
-        </div>
+
+    <!-- Splash Screen -->
+    <div id="splash" class="loader-screen">
+        <div class="w-16 h-16 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
+        <h1 class="mt-6 text-xl font-black italic text-slate-900 uppercase tracking-tighter">Market AI Pro</h1>
     </div>
 
-    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+    <div class="min-h-screen pb-24">
+        <!-- Header -->
+        <header class="bg-white border-b sticky top-0 z-40 px-6 pt-6 pb-4 shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-100">
+                        <i data-lucide="sparkles" class="text-white w-5 h-5"></i>
+                    </div>
+                    <h1 id="header-title" class="text-xl font-black italic uppercase">Geral</h1>
+                </div>
+                <button onclick="clearChecked()" class="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                    <i data-lucide="trash-2" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <!-- Barra de Progresso -->
+            <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full bg-indigo-600 transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </header>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        <!-- Filtros de Categoria -->
+        <div class="bg-white border-b sticky top-[105px] z-30 py-4 overflow-x-auto scrollbar-hide px-6">
+            <div id="category-filters" class="flex gap-2"></div>
+        </div>
 
-        // Componente de Ícone Robusto para ambiente CDN/APK
-        const Icon = ({ name, size = 24, className = "" }) => {
-            const [svg, setSvg] = useState("");
+        <!-- Input de Adição -->
+        <div class="p-6">
+            <div class="relative group">
+                <input id="item-input" type="text" class="w-full pl-6 pr-16 py-5 rounded-3xl border-2 border-slate-100 focus:border-indigo-600 outline-none text-lg font-semibold bg-white transition-all shadow-sm" placeholder="O que comprar?">
+                <button id="add-btn" onclick="addItem()" class="absolute right-2 top-2 bottom-2 px-5 bg-indigo-600 text-white rounded-2xl active:scale-95 transition-all flex items-center justify-center">
+                    <i data-lucide="plus" id="btn-icon" class="w-6 h-6"></i>
+                    <div id="btn-loader" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                </button>
+            </div>
+            <p id="ia-status" class="text-[10px] text-slate-400 mt-2 px-2 font-bold uppercase tracking-widest hidden">IA Classificando...</p>
+        </div>
 
-            useEffect(() => {
-                // Converte o nome do lucide (ex: 'shopping-bag') para PascalCase se necessário
-                const iconName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
-                if (window.lucide && window.lucide[iconName]) {
-                    const iconSvg = window.lucide.createIcons.icons[iconName];
-                    // Como estamos via CDN, vamos usar a função nativa para criar o elemento
-                    const svgString = window.lucide.createElement(window.lucide[iconName]);
-                    // Fallback simples: renderizar via ícone do lucide direto no DOM
+        <!-- Lista de Itens -->
+        <div id="items-container" class="px-6 space-y-3 pb-10"></div>
+    </div>
+
+    <script>
+        // Configurações
+        const apiKey = ""; // Chave será injetada pelo ambiente ou inserida pelo usuário
+        let items = JSON.parse(localStorage.getItem('market_ai_v2')) || [];
+        let categories = ["Geral", "Hortifruti", "Açougue", "Padaria", "Limpeza", "Bebidas", "Laticínios", "Grãos e Farinhas", "Mercearia"];
+        let currentFilter = "Geral";
+
+        window.onload = () => {
+            refreshCategories();
+            renderFilters();
+            render();
+            // Remove o Splash após carregar
+            setTimeout(() => {
+                const splash = document.getElementById('splash');
+                if(splash) { 
+                    splash.style.opacity = '0'; 
+                    setTimeout(() => splash.remove(), 500); 
                 }
-            }, [name]);
-
-            // Versão simplificada para garantir funcionamento
-            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+            }, 800);
         };
 
-        const App = () => {
-            const [view, setView] = useState('list');
-            const [isLoading, setIsLoading] = useState(true);
-            const [isClassifying, setIsClassifying] = useState(false);
-            const [items, setItems] = useState([]);
-            const [categories, setCategories] = useState(["Geral", "Hortifruti", "Açougue", "Padaria", "Limpeza", "Bebidas", "Laticínios"]);
-            const [inputValue, setInputValue] = useState('');
-            const [selectedCategory, setSelectedCategory] = useState('Geral');
-            const [searchTerm, setSearchTerm] = useState('');
+        // Lógica de Inteligência Artificial para Categorização
+        async function getAICategory(itemName) {
+            const systemPrompt = `Você é um classificador de supermercado.
+            REGRAS:
+            1. Se o item for Farinha (qualquer tipo), Arroz, Feijão, Grãos ou Massas secas, use "Grãos e Farinhas".
+            2. NUNCA coloque farinha em "Mercearia".
+            3. Responda apenas o nome da categoria.
+            Categorias: Hortifruti, Açougue, Padaria, Limpeza, Bebidas, Laticínios, Grãos e Farinhas, Mercearia.`;
 
-            const apiKey = ""; 
-
-            useEffect(() => {
-                const init = async () => {
-                    // Os 5 segundos de load obrigatórios
-                    await new Promise(r => setTimeout(r, 5000));
-                    
-                    const sItems = localStorage.getItem('market_apk_v5_items');
-                    const sCats = localStorage.getItem('market_apk_v5_cats');
-                    if (sItems) setItems(JSON.parse(sItems));
-                    if (sCats) setCategories(JSON.parse(sCats));
-                    
-                    setIsLoading(false);
-                    setTimeout(() => lucide.createIcons(), 100);
-                };
-                init();
-            }, []);
-
-            useEffect(() => {
-                if (!isLoading) {
-                    localStorage.setItem('market_apk_v5_items', JSON.stringify(items));
-                    localStorage.setItem('market_apk_v5_cats', JSON.stringify(categories));
-                    lucide.createIcons();
-                }
-            }, [items, categories, isLoading]);
-
-            const classifyItem = async (itemName, currentCategories) => {
-                const catList = currentCategories.filter(c => c !== 'Geral').join(', ');
-                const prompt = `Classifique "${itemName}" em uma destas: [${catList}]. Se não couber, crie uma NOVA categoria curta. Responda apenas o nome.`;
-                
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            // Implementação de Retry com Exponential Backoff (conforme solicitado)
+            for (let i = 0; i < 5; i++) {
                 try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `Classifique este item: ${itemName}` }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] }
+                        })
                     });
-                    const data = await res.json();
-                    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Geral';
-                    const clean = raw.replace(/[^\w\sÀ-ú]/gi, '');
-                    return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
-                } catch (e) { return 'Geral'; }
+                    const data = await response.json();
+                    let category = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Geral";
+                    return category.replace(/[.]/g, ''); // Limpa pontos finais
+                } catch (e) {
+                    const delay = Math.pow(2, i) * 1000;
+                    await new Promise(r => setTimeout(r, delay));
+                }
+            }
+            return "Geral";
+        }
+
+        function refreshCategories() {
+            const itemCats = [...new Set(items.map(i => i.category))];
+            itemCats.forEach(cat => {
+                if (!categories.includes(cat)) categories.push(cat);
+            });
+        }
+
+        function renderFilters() {
+            const filterContainer = document.getElementById('category-filters');
+            filterContainer.innerHTML = categories.map(cat => `
+                <button onclick="filterBy('${cat}')" class="filter-btn px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all whitespace-nowrap 
+                ${currentFilter === cat ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-400'}">
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function filterBy(cat) {
+            currentFilter = cat;
+            document.getElementById('header-title').innerText = cat;
+            renderFilters();
+            render();
+        }
+
+        async function addItem() {
+            const input = document.getElementById('item-input');
+            const btnIcon = document.getElementById('btn-icon');
+            const btnLoader = document.getElementById('btn-loader');
+            const iaStatus = document.getElementById('ia-status');
+            const text = input.value.trim();
+            
+            if (!text) return;
+
+            // UI Feedback
+            btnIcon.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            iaStatus.classList.remove('hidden');
+            input.disabled = true;
+
+            const detectedCategory = await getAICategory(text);
+
+            const newItem = {
+                id: Date.now(),
+                name: text,
+                checked: false,
+                category: detectedCategory
             };
 
-            const addItem = async (e) => {
-                e.preventDefault();
-                if (!inputValue.trim()) return;
-                setIsClassifying(true);
-                const sug = await classifyItem(inputValue.trim(), categories);
-                
-                setCategories(prev => {
-                    if (!prev.some(c => c.toLowerCase() === sug.toLowerCase()) && sug !== 'Geral') return [...prev, sug];
-                    return prev;
-                });
+            items.unshift(newItem);
+            
+            // Reset UI
+            input.disabled = false;
+            input.value = '';
+            btnIcon.classList.remove('hidden');
+            btnLoader.classList.add('hidden');
+            iaStatus.classList.add('hidden');
 
-                setItems(prev => [{ id: Date.now(), name: inputValue.trim(), category: sug, checked: false }, ...prev]);
-                setInputValue('');
-                setIsClassifying(false);
-            };
+            refreshCategories();
+            renderFilters();
+            save();
+        }
 
-            const filteredItems = useMemo(() => {
-                return items.filter(i => 
-                    i.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-                    (selectedCategory === 'Geral' || i.category === selectedCategory)
-                );
-            }, [items, searchTerm, selectedCategory]);
+        function toggleItem(id) {
+            items = items.map(i => i.id === id ? {...i, checked: !i.checked} : i);
+            save();
+        }
 
-            const progress = items.length ? Math.round((items.filter(i => i.checked).length / items.length) * 100) : 0;
+        function deleteItem(id) {
+            items = items.filter(i => i.id !== id);
+            save();
+        }
 
-            if (isLoading) {
-                return (
-                    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-12">
-                        <div className="relative mb-10">
-                            <div className="absolute inset-0 bg-slate-900/10 rounded-full animate-ping scale-150"></div>
-                            <div className="bg-slate-900 p-8 rounded-[3rem] relative z-10 shadow-2xl">
-                                <i data-lucide="shopping-bag" className="text-white w-14 h-14"></i>
+        function clearChecked() {
+            items = items.filter(i => !i.checked);
+            save();
+        }
+
+        function save() {
+            localStorage.setItem('market_ai_v2', JSON.stringify(items));
+            render();
+        }
+
+        function render() {
+            const container = document.getElementById('items-container');
+            const bar = document.getElementById('progress-bar');
+            const filtered = items.filter(i => currentFilter === "Geral" || i.category === currentFilter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-20 opacity-20">
+                        <i data-lucide="shopping-cart" class="w-16 h-16 mx-auto mb-4"></i>
+                        <p class="font-black uppercase tracking-widest text-xs">Lista Vazia</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = filtered.map(item => `
+                    <div class="item-card flex items-center gap-4 p-5 rounded-3xl border-2 transition-all ${item.checked ? 'bg-slate-50 border-transparent opacity-60' : 'bg-white border-white shadow-md'}">
+                        <button onclick="toggleItem(${item.id})" class="${item.checked ? 'text-green-500' : 'text-slate-200'}">
+                            <i data-lucide="${item.checked ? 'check-circle-2' : 'circle'}" class="w-8 h-8"></i>
+                        </button>
+                        <div class="flex-1 min-w-0" onclick="toggleItem(${item.id})">
+                            <h3 class="font-bold text-lg truncate ${item.checked ? 'line-through text-slate-400' : 'text-slate-700'}">${item.name}</h3>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded tracking-widest italic flex items-center gap-1">
+                                    <i data-lucide="tag" class="w-2 h-2"></i> ${item.category}
+                                </span>
                             </div>
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 uppercase italic">Meu Mercado</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-4 animate-pulse">Sincronizando</p>
-                        <div className="fixed bottom-16 left-12 right-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-slate-900 animate-loading-bar" />
-                        </div>
+                        <button onclick="deleteItem(${item.id})" class="p-2 text-slate-200 hover:text-red-400 transition-colors">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
                     </div>
-                );
+                `).join('');
             }
 
-            if (view === 'settings') {
-                return (
-                    <div className="min-h-screen bg-slate-50 animate-fade-in">
-                        <header className="bg-white p-6 border-b sticky top-0 z-50 flex items-center gap-4">
-                            <button onClick={() => setView('list')} className="p-2"><i data-lucide="chevron-left"></i></button>
-                            <h1 className="text-xl font-bold uppercase tracking-tight">Setores</h1>
-                        </header>
-                        <main className="p-6 space-y-4 max-w-md mx-auto">
-                            {categories.map(cat => (
-                                <div key={cat} className="bg-white p-5 rounded-[1.5rem] border flex justify-between items-center">
-                                    <span className="font-bold text-slate-700">{cat}</span>
-                                    {cat !== 'Geral' && <button onClick={() => setCategories(c => c.filter(x => x !== cat))}><i data-lucide="trash" className="text-slate-300 w-5 h-5"></i></button>}
-                                </div>
-                            ))}
-                        </main>
-                    </div>
-                );
-            }
+            const checkedCount = items.filter(i => i.checked).length;
+            bar.style.width = (items.length ? (checkedCount / items.length) * 100 : 0) + '%';
+            lucide.createIcons();
+        }
 
-            return (
-                <div className="min-h-screen bg-[#F8FAFC] pb-24 animate-fade-in">
-                    <header className="bg-white border-b sticky top-0 z-50 px-6 pt-6 pb-4">
-                        <div className="max-w-md mx-auto">
-                            <div className="flex justify-between items-center mb-5">
-                                <h1 className="text-2xl font-black italic flex items-center gap-2">
-                                    <div className="bg-slate-900 p-2 rounded-xl"><i data-lucide="shopping-bag" className="text-white w-5 h-5"></i></div>
-                                    {selectedCategory.toUpperCase()}
-                                </h1>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setView('settings')} className="p-2 text-slate-300"><i data-lucide="settings"></i></button>
-                                    <button onClick={() => setItems(items.filter(i => !i.checked))} className="p-2 text-slate-300"><i data-lucide="trash-2"></i></button>
-                                </div>
-                            </div>
-                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-600 transition-all duration-1000" style={{ width: `${progress}%` }} />
-                            </div>
-                        </div>
-                    </header>
-
-                    <div className="bg-white border-b sticky top-[108px] z-40 py-4 overflow-x-auto scrollbar-hide px-6">
-                        <div className="flex gap-3">
-                            {categories.map(cat => (
-                                <button key={cat} onClick={() => setSelectedCategory(cat)} 
-                                    className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 whitespace-nowrap ${selectedCategory === cat ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-400'}`}>
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <main className="p-6 max-w-md mx-auto space-y-6">
-                        <form onSubmit={addItem} className="relative">
-                            <input className="w-full pl-6 pr-16 py-5 rounded-[2rem] border-2 border-slate-100 focus:border-slate-900 outline-none text-lg font-semibold shadow-sm" placeholder="O que comprar?" value={inputValue} onChange={e => setInputValue(e.target.value)} disabled={isClassifying} />
-                            <button className="absolute right-2.5 top-2.5 bottom-2.5 px-5 bg-slate-900 text-white rounded-[1.5rem] flex items-center">
-                                {isClassifying ? <i data-lucide="loader-2" className="animate-spin"></i> : <i data-lucide="plus" className="w-7 h-7"></i>}
-                            </button>
-                        </form>
-
-                        <div className="relative">
-                            <i data-lucide="search" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5"></i>
-                            <input className="w-full pl-12 py-4 rounded-2xl bg-slate-100/50 outline-none text-sm font-semibold" placeholder="Filtrar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                        </div>
-
-                        <div className="space-y-3">
-                            {filteredItems.map(item => (
-                                <div key={item.id} className={`flex items-center gap-4 p-5 rounded-[2rem] border-2 ${item.checked ? 'bg-slate-50 opacity-60' : 'bg-white shadow-xl shadow-slate-200/20 border-white'}`}>
-                                    <button onClick={() => setItems(items.map(i => i.id === item.id ? {...i, checked: !i.checked} : i))} className={item.checked ? 'text-green-500' : 'text-slate-200'}>
-                                        <i data-lucide={item.checked ? 'check-circle-2' : 'circle'} className="w-8 h-8"></i>
-                                    </button>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className={`font-bold text-lg truncate ${item.checked ? 'line-through text-slate-400' : ''}`}>{item.name}</h3>
-                                        <div className="flex items-center gap-1.5 opacity-50 text-[9px] font-black uppercase tracking-widest"><i data-lucide="tag" className="w-2.5 h-2.5"></i>{item.category}</div>
-                                    </div>
-                                    <button onClick={() => setItems(items.filter(i => i.id !== item.id))} className="text-slate-200"><i data-lucide="trash-2" className="w-5 h-5"></i></button>
-                                </div>
-                            ))}
-                        </div>
-                    </main>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        document.getElementById('item-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addItem(); });
     </script>
 </body>
 </html>
