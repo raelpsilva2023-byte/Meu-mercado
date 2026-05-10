@@ -1,0 +1,259 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Meu Mercado</title>
+    <!-- Bibliotecas Essenciais -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            margin: 0; 
+            background-color: #F8FAFC;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-loading-bar { animation: loadingBar 5s linear forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes loadingBar { from { width: 0%; } to { width: 100%; } }
+        
+        /* Previne que a tela fique branca enquanto o React carrega */
+        #root:empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <!-- Loader estático para evitar tela branca inicial -->
+        <div style="text-align: center; font-family: sans-serif; color: #cbd5e1;">
+            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+            <p style="font-size: 10px; font-weight: bold; letter-spacing: 2px;">INICIALIZANDO...</p>
+        </div>
+    </div>
+
+    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Componente de Ícone Robusto para ambiente CDN/APK
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const [svg, setSvg] = useState("");
+
+            useEffect(() => {
+                // Converte o nome do lucide (ex: 'shopping-bag') para PascalCase se necessário
+                const iconName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+                if (window.lucide && window.lucide[iconName]) {
+                    const iconSvg = window.lucide.createIcons.icons[iconName];
+                    // Como estamos via CDN, vamos usar a função nativa para criar o elemento
+                    const svgString = window.lucide.createElement(window.lucide[iconName]);
+                    // Fallback simples: renderizar via ícone do lucide direto no DOM
+                }
+            }, [name]);
+
+            // Versão simplificada para garantir funcionamento
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+        };
+
+        const App = () => {
+            const [view, setView] = useState('list');
+            const [isLoading, setIsLoading] = useState(true);
+            const [isClassifying, setIsClassifying] = useState(false);
+            const [items, setItems] = useState([]);
+            const [categories, setCategories] = useState(["Geral", "Hortifruti", "Açougue", "Padaria", "Limpeza", "Bebidas", "Laticínios"]);
+            const [inputValue, setInputValue] = useState('');
+            const [selectedCategory, setSelectedCategory] = useState('Geral');
+            const [searchTerm, setSearchTerm] = useState('');
+
+            const apiKey = ""; 
+
+            useEffect(() => {
+                const init = async () => {
+                    // Os 5 segundos de load obrigatórios
+                    await new Promise(r => setTimeout(r, 5000));
+                    
+                    const sItems = localStorage.getItem('market_apk_v5_items');
+                    const sCats = localStorage.getItem('market_apk_v5_cats');
+                    if (sItems) setItems(JSON.parse(sItems));
+                    if (sCats) setCategories(JSON.parse(sCats));
+                    
+                    setIsLoading(false);
+                    setTimeout(() => lucide.createIcons(), 100);
+                };
+                init();
+            }, []);
+
+            useEffect(() => {
+                if (!isLoading) {
+                    localStorage.setItem('market_apk_v5_items', JSON.stringify(items));
+                    localStorage.setItem('market_apk_v5_cats', JSON.stringify(categories));
+                    lucide.createIcons();
+                }
+            }, [items, categories, isLoading]);
+
+            const classifyItem = async (itemName, currentCategories) => {
+                const catList = currentCategories.filter(c => c !== 'Geral').join(', ');
+                const prompt = `Classifique "${itemName}" em uma destas: [${catList}]. Se não couber, crie uma NOVA categoria curta. Responda apenas o nome.`;
+                
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    const data = await res.json();
+                    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Geral';
+                    const clean = raw.replace(/[^\w\sÀ-ú]/gi, '');
+                    return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+                } catch (e) { return 'Geral'; }
+            };
+
+            const addItem = async (e) => {
+                e.preventDefault();
+                if (!inputValue.trim()) return;
+                setIsClassifying(true);
+                const sug = await classifyItem(inputValue.trim(), categories);
+                
+                setCategories(prev => {
+                    if (!prev.some(c => c.toLowerCase() === sug.toLowerCase()) && sug !== 'Geral') return [...prev, sug];
+                    return prev;
+                });
+
+                setItems(prev => [{ id: Date.now(), name: inputValue.trim(), category: sug, checked: false }, ...prev]);
+                setInputValue('');
+                setIsClassifying(false);
+            };
+
+            const filteredItems = useMemo(() => {
+                return items.filter(i => 
+                    i.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                    (selectedCategory === 'Geral' || i.category === selectedCategory)
+                );
+            }, [items, searchTerm, selectedCategory]);
+
+            const progress = items.length ? Math.round((items.filter(i => i.checked).length / items.length) * 100) : 0;
+
+            if (isLoading) {
+                return (
+                    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-12">
+                        <div className="relative mb-10">
+                            <div className="absolute inset-0 bg-slate-900/10 rounded-full animate-ping scale-150"></div>
+                            <div className="bg-slate-900 p-8 rounded-[3rem] relative z-10 shadow-2xl">
+                                <i data-lucide="shopping-bag" className="text-white w-14 h-14"></i>
+                            </div>
+                        </div>
+                        <h1 className="text-3xl font-black text-slate-900 uppercase italic">Meu Mercado</h1>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-4 animate-pulse">Sincronizando</p>
+                        <div className="fixed bottom-16 left-12 right-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-slate-900 animate-loading-bar" />
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'settings') {
+                return (
+                    <div className="min-h-screen bg-slate-50 animate-fade-in">
+                        <header className="bg-white p-6 border-b sticky top-0 z-50 flex items-center gap-4">
+                            <button onClick={() => setView('list')} className="p-2"><i data-lucide="chevron-left"></i></button>
+                            <h1 className="text-xl font-bold uppercase tracking-tight">Setores</h1>
+                        </header>
+                        <main className="p-6 space-y-4 max-w-md mx-auto">
+                            {categories.map(cat => (
+                                <div key={cat} className="bg-white p-5 rounded-[1.5rem] border flex justify-between items-center">
+                                    <span className="font-bold text-slate-700">{cat}</span>
+                                    {cat !== 'Geral' && <button onClick={() => setCategories(c => c.filter(x => x !== cat))}><i data-lucide="trash" className="text-slate-300 w-5 h-5"></i></button>}
+                                </div>
+                            ))}
+                        </main>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-[#F8FAFC] pb-24 animate-fade-in">
+                    <header className="bg-white border-b sticky top-0 z-50 px-6 pt-6 pb-4">
+                        <div className="max-w-md mx-auto">
+                            <div className="flex justify-between items-center mb-5">
+                                <h1 className="text-2xl font-black italic flex items-center gap-2">
+                                    <div className="bg-slate-900 p-2 rounded-xl"><i data-lucide="shopping-bag" className="text-white w-5 h-5"></i></div>
+                                    {selectedCategory.toUpperCase()}
+                                </h1>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setView('settings')} className="p-2 text-slate-300"><i data-lucide="settings"></i></button>
+                                    <button onClick={() => setItems(items.filter(i => !i.checked))} className="p-2 text-slate-300"><i data-lucide="trash-2"></i></button>
+                                </div>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-600 transition-all duration-1000" style={{ width: `${progress}%` }} />
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="bg-white border-b sticky top-[108px] z-40 py-4 overflow-x-auto scrollbar-hide px-6">
+                        <div className="flex gap-3">
+                            {categories.map(cat => (
+                                <button key={cat} onClick={() => setSelectedCategory(cat)} 
+                                    className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 whitespace-nowrap ${selectedCategory === cat ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-400'}`}>
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <main className="p-6 max-w-md mx-auto space-y-6">
+                        <form onSubmit={addItem} className="relative">
+                            <input className="w-full pl-6 pr-16 py-5 rounded-[2rem] border-2 border-slate-100 focus:border-slate-900 outline-none text-lg font-semibold shadow-sm" placeholder="O que comprar?" value={inputValue} onChange={e => setInputValue(e.target.value)} disabled={isClassifying} />
+                            <button className="absolute right-2.5 top-2.5 bottom-2.5 px-5 bg-slate-900 text-white rounded-[1.5rem] flex items-center">
+                                {isClassifying ? <i data-lucide="loader-2" className="animate-spin"></i> : <i data-lucide="plus" className="w-7 h-7"></i>}
+                            </button>
+                        </form>
+
+                        <div className="relative">
+                            <i data-lucide="search" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5"></i>
+                            <input className="w-full pl-12 py-4 rounded-2xl bg-slate-100/50 outline-none text-sm font-semibold" placeholder="Filtrar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                        </div>
+
+                        <div className="space-y-3">
+                            {filteredItems.map(item => (
+                                <div key={item.id} className={`flex items-center gap-4 p-5 rounded-[2rem] border-2 ${item.checked ? 'bg-slate-50 opacity-60' : 'bg-white shadow-xl shadow-slate-200/20 border-white'}`}>
+                                    <button onClick={() => setItems(items.map(i => i.id === item.id ? {...i, checked: !i.checked} : i))} className={item.checked ? 'text-green-500' : 'text-slate-200'}>
+                                        <i data-lucide={item.checked ? 'check-circle-2' : 'circle'} className="w-8 h-8"></i>
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className={`font-bold text-lg truncate ${item.checked ? 'line-through text-slate-400' : ''}`}>{item.name}</h3>
+                                        <div className="flex items-center gap-1.5 opacity-50 text-[9px] font-black uppercase tracking-widest"><i data-lucide="tag" className="w-2.5 h-2.5"></i>{item.category}</div>
+                                    </div>
+                                    <button onClick={() => setItems(items.filter(i => i.id !== item.id))} className="text-slate-200"><i data-lucide="trash-2" className="w-5 h-5"></i></button>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+```
