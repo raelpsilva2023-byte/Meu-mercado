@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -10,26 +11,35 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        
+        /* Garantir que o conteúdo está visível imediatamente */
+        html, body {
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: block !important;
+        }
+
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background-color: #F8FAFC; 
             -webkit-tap-highlight-color: transparent; 
             margin: 0; 
         }
+
         .item-card { animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { 
             from { opacity: 0; transform: translateY(10px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
+
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        /* Suporte para entalhes de celular (Safe Area) */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
-<body>
+<body class="opacity-100">
 
     <div class="min-h-screen pb-24">
-        <!-- Header -->
+        <!-- Cabeçalho -->
         <header class="bg-white border-b sticky top-0 z-40 px-6 pt-6 pb-4 shadow-sm">
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-2">
@@ -53,7 +63,7 @@
             <div id="category-filters" class="flex gap-2"></div>
         </div>
 
-        <!-- Input de Adição -->
+        <!-- Campo de Introdução -->
         <div class="p-6">
             <div class="relative group">
                 <input id="item-input" type="text" class="w-full pl-6 pr-16 py-5 rounded-3xl border-2 border-slate-100 focus:border-indigo-600 outline-none text-lg font-semibold bg-white transition-all shadow-sm" placeholder="O que comprar?">
@@ -62,7 +72,7 @@
                     <div id="btn-loader" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 </button>
             </div>
-            <p id="ia-status" class="text-[10px] text-slate-400 mt-2 px-2 font-bold uppercase tracking-widest hidden">IA Classificando...</p>
+            <p id="ia-status" class="text-[10px] text-slate-400 mt-2 px-2 font-bold uppercase tracking-widest hidden">IA a Classificar...</p>
         </div>
 
         <!-- Lista de Itens -->
@@ -70,27 +80,34 @@
     </div>
 
     <script>
-        // Configurações
+        // Configurações e Estado
         const apiKey = ""; 
         let items = JSON.parse(localStorage.getItem('market_ai_v2')) || [];
         let categories = ["Geral", "Hortifruti", "Açougue", "Padaria", "Limpeza", "Bebidas", "Laticínios", "Grãos e Farinhas", "Mercearia"];
         let currentFilter = "Geral";
 
-        // Inicialização imediata (sem splash screen)
-        window.addEventListener('DOMContentLoaded', () => {
+        // Inicialização imediata assim que o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
+
+        function initApp() {
             refreshCategories();
             renderFilters();
             render();
-            lucide.createIcons();
-        });
+            // Inicializar ícones do Lucide
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
 
-        // Lógica de Inteligência Artificial para Categorização
+        // Lógica da IA para Categorização
         async function getAICategory(itemName) {
-            const systemPrompt = `Você é um classificador de supermercado.
+            const systemPrompt = `És um classificador de supermercado.
             REGRAS:
-            1. Se o item for Farinha (qualquer tipo), Arroz, Feijão, Grãos ou Massas secas, use "Grãos e Farinhas".
-            2. NUNCA coloque farinha em "Mercearia".
-            3. Responda apenas o nome da categoria.
+            1. Se o item for Farinha, Arroz, Feijão, Grãos ou Massas secas, usa "Grãos e Farinhas".
+            2. NUNCA coloques farinha em "Mercearia".
+            3. Responde apenas o nome da categoria.
             Categorias: Hortifruti, Açougue, Padaria, Limpeza, Bebidas, Laticínios, Grãos e Farinhas, Mercearia.`;
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -101,7 +118,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: `Classifique este item: ${itemName}` }] }],
+                            contents: [{ parts: [{ text: `Classifica este item: ${itemName}` }] }],
                             systemInstruction: { parts: [{ text: systemPrompt }] }
                         })
                     });
@@ -125,6 +142,8 @@
 
         function renderFilters() {
             const filterContainer = document.getElementById('category-filters');
+            if (!filterContainer) return;
+            
             filterContainer.innerHTML = categories.map(cat => `
                 <button onclick="filterBy('${cat}')" class="filter-btn px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all whitespace-nowrap 
                 ${currentFilter === cat ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-400'}">
@@ -135,7 +154,8 @@
 
         function filterBy(cat) {
             currentFilter = cat;
-            document.getElementById('header-title').innerText = cat;
+            const titleEl = document.getElementById('header-title');
+            if (titleEl) titleEl.innerText = cat;
             renderFilters();
             render();
         }
@@ -199,6 +219,8 @@
         function render() {
             const container = document.getElementById('items-container');
             const bar = document.getElementById('progress-bar');
+            if (!container) return;
+
             const filtered = items.filter(i => currentFilter === "Geral" || i.category === currentFilter);
 
             if (filtered.length === 0) {
@@ -229,12 +251,20 @@
                 `).join('');
             }
 
-            const checkedCount = items.filter(i => i.checked).length;
-            bar.style.width = (items.length ? (checkedCount / items.length) * 100 : 0) + '%';
-            lucide.createIcons();
+            if (bar) {
+                const checkedCount = items.filter(i => i.checked).length;
+                bar.style.width = (items.length ? (checkedCount / items.length) * 100 : 0) + '%';
+            }
+            
+            if (window.lucide) {
+                lucide.createIcons();
+            }
         }
 
-        document.getElementById('item-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addItem(); });
+        // Listener para a tecla Enter
+        document.getElementById('item-input').addEventListener('keypress', (e) => { 
+            if (e.key === 'Enter') addItem(); 
+        });
     </script>
 </body>
 </html>
